@@ -2,8 +2,8 @@
   Internal node structure: [nodeID] = {leafCheck=false, topLeft[], bottomRight[], entries[]}
   Leaf node structure: [entryID] = {leafCheck=true, topLeft[], bottomRight[], entries[]}
   
-  Entry structure for internal node: [entryID] = {topRight, bottomLeft, childID, object=false}
-  Entry structure for leaf: [entryID] = {topRight, bottomLeft, objectID, object=true}
+  Entry structure for internal node: [entryID] = {topRight, bottomLeft, childID, parentID, object=false}
+  Entry structure for leaf: [entryID] = {topRight, bottomLeft, objectID, parentID, object=true}
 */
 
 function RTree(){
@@ -12,10 +12,13 @@ function RTree(){
     return (new arguments.callee(arguments));
 
   var self = this;
-
+  
   self.minRootEntries = 2; //min entries for root
   self.M = maxEntries || 4; //max entries in a node
 
+  //TODO do check for re-setting this
+  self.rootNodeID = null; // root nodeID
+  
   // constructor
   function init(){
     self.nodes = [];  //have entryID
@@ -44,12 +47,14 @@ function RTree(){
   self.init();
 };
 
+
 RTree.prototype.addLeafEntry = function(parentNode, topLeft, bottomRight, objectID){
   
   self.entries[objectID] = {
                               topLeft: topLeft
                             , bottomRight: bottomRight
                             , objectID: objectID
+                            , parentID: parentNode
                             , object: true
                            };
   self.nodes[parentNode].entries.push(objectID);
@@ -63,6 +68,7 @@ RTree.prototype.addEntry = function(parentNode, topLeft, bottomRight, nodeID){
                               topLeft: topLeft
                             , bottomRight: bottomRight
                             , objectID: objectID
+                            , parentID: parentNode
                             , object: false
                            };
   self.nodes[parentNode].entries.push(objectID);
@@ -81,21 +87,27 @@ RTree.prototype.rangeSearch = function(rootNode, queryRect){
   
   if (self.nodes[rootNode].leaf == false) {
     for(var i in children) {
-      // check if the entry's MBR fits. if yes then search the child node      
-      var nodeID = self.doesIntersect(quertRect, children[i]);
-      if(nodeID!=false)
+      // check if the entry's MBR fits. if yes then search the child node
+      if(children[i]!=undefined)
       {
-        var tempResult = self.rangeSearch(nodeID, queryRect);
-        resultSet = resultSet.concat(tempResult);
+        var nodeID = self.doesIntersect(quertRect, children[i]);
+        if(nodeID!=false)
+        {
+          var tempResult = self.rangeSearch(nodeID, queryRect);
+          resultSet = resultSet.concat(tempResult);
+        }
       }
     }
   }
   else
   {
     for(var i in children) {
-      var objectID = self.doesIntersect(quertRect, children[i]);
-      if(objectID!=false)
-        resultSet[ self.getObjectID(children[i]) ] = children[i];
+      if(children[i]!=undefined)
+      {
+        var objectID = self.doesIntersect(quertRect, children[i]);
+        if(objectID!=false)
+          resultSet[ self.getObjectID(children[i]) ] = children[i];
+      }
     }
     // the returned result is always matching entries from leaf nodes
     return resultSet.unique();
@@ -122,16 +134,44 @@ RTree.prototype.doesIntersect = function(queryRect, entryID){
     return false;
 };
 
-
 RTree.prototype.getObjectID = function(entryID){
+  //this is only meant for leaf node entries
   return self.entries[entryID].objectID;
+}
+
+RTree.prototype.getEntry = function(entryID){
+  return self.entries[entryID];
 };
 
 RTree.prototype.insert = function(entry, node){
   
 };
 
+RTree.prototype.condenseTree = function(leafNode){
+  
+};
+
 RTree.prototype.deleteEntry = function(objectID){
-  //since objectID = entryID for all objects
+  /*
+    a small variation to the usual delete operation in R-Trees
+    since objectID == entryID for leaf entries
+    take advantage of the data structure used here
+    traversing can be omitted => increases speed
+  */
+  
+  var leafNodeID = self.entries[objectID].parentID;
   delete(self.entries[objectID]);
+  
+  //clean up beigns
+  self.condenseTree(leafNodeID);
+  
+  if(self.rootNodeID!=null 
+    && self.nodes[rootNodeID].entries.length==1 
+    && self.nodes[rootNodeID].leaf==false
+  )
+  {
+    var childID = self.getEntry(self.nodes[rootNodeID].entries[0]).childID;
+    delete(self.nodes[rootNodeID]);
+    self.rootNodeID = childID;
+  }
 };
