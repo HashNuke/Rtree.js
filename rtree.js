@@ -78,7 +78,7 @@ RTree.prototype.rangeSearch = function(rootNode, queryRect){
   {
     for(var i in children) {
       var objectID = self.doesIntersect(quertRect, children[i]);
-      if(objectID!=false) {
+      if(objectID!=false)
         resultSet[ self.getObjectID(children[i]) ] = children[i];
     }
     // the returned result is always matching entries from leaf nodes
