@@ -2,7 +2,8 @@
   Internal node structure: [nodeID] = {leafCheck=false, topLeft[], bottomRight[], entries[]}
   Leaf node structure: [entryID] = {leafCheck=true, topLeft[], bottomRight[], entries[]}
   
-  Entry structure: [entryID] = {topRight, bottomLeft, objectID, childID}
+  Entry structure for internal node: [entryID] = {topRight, bottomLeft, childID, object=false}
+  Entry structure for leaf: [entryID] = {topRight, bottomLeft, objectID, object=true}
 */
 
 function RTree(){
@@ -12,9 +13,8 @@ function RTree(){
 
   var self = this;
 
-  var minRootEntries = 2; //min entries for root
-  var M = maxEntries || 4; //max entries in a node
-  var m;
+  self.minRootEntries = 2; //min entries for root
+  self.M = maxEntries || 4; //max entries in a node
 
   // constructor
   function init(){
@@ -44,15 +44,31 @@ function RTree(){
   self.init();
 };
 
-RTree.prototype.addEntry = function(parentNode, topLeft, bottomRight, objectID){
-  var entryID = self.entries.push({
-                                    topLeft: topLeft
-                                  , bottomRight: bottomRight
-                                  , objectID: objectID
-                                 });
-  self.nodes[parentNode].entries.push(entryID);
-  return entryID;
+RTree.prototype.addLeafEntry = function(parentNode, topLeft, bottomRight, objectID){
+  
+  self.entries[objectID] = {
+                              topLeft: topLeft
+                            , bottomRight: bottomRight
+                            , objectID: objectID
+                            , object: true
+                           };
+  self.nodes[parentNode].entries.push(objectID);
+  return objectID;
 };
+
+
+RTree.prototype.addEntry = function(parentNode, topLeft, bottomRight, nodeID){
+  
+  self.entries[objectID] = {
+                              topLeft: topLeft
+                            , bottomRight: bottomRight
+                            , objectID: objectID
+                            , object: false
+                           };
+  self.nodes[parentNode].entries.push(objectID);
+  return objectID;
+};
+
 
 RTree.prototype.formatQuery = function(topLeft, bottomRight){
   return {topLeft: topLeft, bottomRight: bottomRight};
@@ -97,7 +113,7 @@ RTree.prototype.doesIntersect = function(queryRect, entryID){
       && queryRect.bottomRight[1]<=entry.bottomRight[1]
     )
     {
-      if(entry.length==3)
+      if(entry.object==true)
         return entry.objectID;
       else
         return entry.childID;
@@ -113,4 +129,9 @@ RTree.prototype.getObjectID = function(entryID){
 
 RTree.prototype.insert = function(entry, node){
   
+};
+
+RTree.prototype.deleteEntry = function(objectID){
+  //since objectID = entryID for all objects
+  delete(self.entries[objectID]);
 };
