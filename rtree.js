@@ -2,10 +2,13 @@
   Internal node structure: [nodeID] = {leafCheck=false, topLeft[], bottomRight[], entries[]}
   Leaf node structure: [entryID] = {leafCheck=true, topLeft[], bottomRight[], entries[]}
   
-  Entry structure: [entryID] {topRight, bottomLeft, objectID}
+  Entry structure: [entryID] = {topRight, bottomLeft, objectID, childID}
 */
 
 function RTree(){
+
+  if(!this instanceof arguments.callee)
+    return (new arguments.callee(arguments));
 
   var self = this;
 
@@ -39,7 +42,7 @@ function RTree(){
   };
   
   self.init();
-}
+};
 
 RTree.prototype.addEntry = function(parentNode, topLeft, bottomRight, objectID){
   var entryID = self.entries.push({
@@ -53,7 +56,7 @@ RTree.prototype.addEntry = function(parentNode, topLeft, bottomRight, objectID){
 
 RTree.prototype.formatQuery = function(topLeft, bottomRight){
   return {topLeft: topLeft, bottomRight: bottomRight};
-}
+};
 
 RTree.prototype.rangeSearch = function(rootNode, queryRect){
 
@@ -62,26 +65,29 @@ RTree.prototype.rangeSearch = function(rootNode, queryRect){
   
   if (self.nodes[rootNode].leaf == false) {
     for(var i in children) {
-      var tempResult = self.rangeSearch(children[i], queryRect);
-      resultSet = resultSet.concat(tempResult).unique();
+      // check if the entry's MBR fits. if yes then search the child node      
+      var nodeID = self.doesIntersect(quertRect, children[i]);
+      if(nodeID!=false)
+      {
+        var tempResult = self.rangeSearch(nodeID, queryRect);
+        resultSet = resultSet.concat(tempResult);
+      }
     }
   }
   else
   {
     for(var i in children) {
-      var check = self.doesIntersect(quertRect, children[i]);
-      if(check!=false)
+      var objectID = self.doesIntersect(quertRect, children[i]);
+      if(objectID!=false) {
         resultSet[ self.getObjectID(children[i]) ] = children[i];
-      else
-        return false;
     }
+    // the returned result is always matching entries from leaf nodes
+    return resultSet.unique();
   }
-  return resultSet;
 };
 
-
 RTree.prototype.doesIntersect = function(queryRect, entryID){
-  //returns objectID if intersects
+  //returns objectID if the entry is an object else return pointer to childNode
   var entry = self.entries[entryID];
   
   if(
@@ -90,17 +96,21 @@ RTree.prototype.doesIntersect = function(queryRect, entryID){
       && queryRect.topLeft[1]>=entry.topLeft[1]
       && queryRect.bottomRight[1]<=entry.bottomRight[1]
     )
-    return entry.objectID;
+    {
+      if(entry.length==3)
+        return entry.objectID;
+      else
+        return entry.childID;
+    }
   else
     return false;
 };
 
 
 RTree.prototype.getObjectID = function(entryID){
-  // don't handle exception here
   return self.entries[entryID].objectID;
 };
 
-RTree.prototype.someFunc = function(){
-  //TODO
+RTree.prototype.insert = function(entry, node){
+  
 };
